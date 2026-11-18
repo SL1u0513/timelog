@@ -1220,6 +1220,8 @@
       toast('装好了，回桌面看看');
     });
     $('#copyUrlBtn').addEventListener('click', copyUrl);
+    var upd = $('#updateBtn');
+    if (upd) upd.addEventListener('click', checkUpdate);
     renderInstallCard();
   }
 
@@ -1235,8 +1237,35 @@
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    navigator.serviceWorker.register('sw.js').catch(function (err) {
-      console.warn('SW 注册失败', err);
+
+    var hadController = !!navigator.serviceWorker.controller;
+
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then(function (reg) {
+        // 每次打开都问一次有没有新版，别等浏览器自己想起来
+        reg.update().catch(function () {});
+      })
+      .catch(function (err) { console.warn('SW 注册失败', err); });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController) { hadController = true; return; }
+      toastAction('已经更新到新版本', '刷新', function () { location.reload(); });
+    });
+  }
+
+  /* 手动检查更新：拉一次 SW，再重载（导航走 no-store，拿到的就是最新的） */
+  function checkUpdate() {
+    var btn = $('#updateBtn');
+    if (btn) btn.disabled = true;
+    toast('检查更新中…');
+    var work = Promise.resolve();
+    if ('serviceWorker' in navigator) {
+      work = navigator.serviceWorker.getRegistration()
+        .then(function (reg) { return reg ? reg.update() : null; })
+        .catch(function () {});
+    }
+    work.then(function () {
+      setTimeout(function () { location.reload(); }, 350);
     });
   }
 
@@ -1286,6 +1315,25 @@
 
   var toastTimer = null;
 
+  function toastAction(msg, label, fn) {
+    var el = $('#toast');
+    if (!el) return;
+    clearTimeout(toastTimer);
+    el.innerHTML = '<span>' + esc(msg) + '</span><button class="toast-act" type="button">' + esc(label) + '</button>';
+    el.classList.add('is-action');
+    el.hidden = false;
+    requestAnimationFrame(function () { el.classList.add('is-show'); });
+    el.onclick = function (e) {
+      if (e.target.closest('.toast-act')) {
+        el.classList.remove('is-show');
+        el.hidden = true;
+        el.onclick = null;
+        fn();
+      }
+    };
+    toastTimer = setTimeout(hideToast, 8000);
+  }
+
   function hideToast() {
     var el = $('#toast');
     if (!el) return;
@@ -1297,6 +1345,8 @@
   function toast(msg) {
     var el = $('#toast');
     if (!el) return;
+    el.onclick = null;
+    el.classList.remove('is-action');
     el.textContent = msg;
     el.hidden = false;
     requestAnimationFrame(function () { el.classList.add('is-show'); });

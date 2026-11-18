@@ -96,6 +96,28 @@ function walk(dir, base = '') {
     await api('POST', `/repos/${REPO}/git/refs`, { ref: `refs/heads/${BRANCH}`, sha: commit.sha })
   }
   console.log('ref updated: refs/heads/' + BRANCH)
+
+  // 等 Pages 真的发出来（GitHub Pages 构建 + CDN 生效通常 30–90 秒）
+  const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8')
+  const ver = (swSrc.match(/timelog-v\d+/) || [])[0]
+  if (ver && /github\.io$/.test(REPO.split('/')[0]) === false) {
+    const url = `https://${me.login.toLowerCase()}.github.io/${REPO.split('/')[1]}/sw.js`
+    const t0 = Date.now()
+    process.stdout.write(`waiting for ${url} -> ${ver}`)
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 3000))
+      try {
+        const res = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' })
+        const txt = await res.text()
+        if (txt.includes(ver)) {
+          console.log(`\nlive in ${Math.round((Date.now() - t0) / 1000)}s`)
+          break
+        }
+      } catch { /* 还没起来 */ }
+      process.stdout.write('.')
+      if (i === 59) console.log('\n警告：等了 3 分钟还没看到新版，去 Actions/设置里看下 Pages 构建')
+    }
+  }
 })().catch((e) => {
   console.error('FAILED:', e.message)
   process.exit(1)

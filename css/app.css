@@ -816,6 +816,23 @@ input.date-input {
   text-align: center;
 }
 .toast.is-show { opacity: 1; transform: translate(-50%, 0); }
+.toast.is-action {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+.toast-act {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 182, 66, .45);
+  background: rgba(245, 182, 66, .14);
+  color: var(--focus);
+  font-size: 12.5px;
+  font-weight: 600;
+}
 
 /* ---------------- 宽屏 ---------------- */
 @media (min-width: 600px) {
