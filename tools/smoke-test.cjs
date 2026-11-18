@@ -120,10 +120,12 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
 
   // 加一条自定义条款
   await page.click('#addRuleBtn')
-  await page.selectOption('#ruleType', 'game')
+  await page.waitForSelector('#ruleSheet.is-open')
+  await page.click('#ruleTypeChips [data-rule-type="game"]')
   await page.fill('#ruleMinutes', '45')
   await page.fill('#ruleLabel', '游戏 45 分钟')
-  await page.click('#ruleForm button[type="submit"]')
+  await page.click('#ruleSave')
+  await page.waitForSelector('#ruleSheet', { state: 'hidden' })
   await page.waitForTimeout(300)
   const rules2 = await page.$$eval('.rule', (els) => els.length)
   log('9. 新条款后条数 =', rules2)

@@ -71,35 +71,6 @@
       <p class="hint">底线不是 KPI，是给自己划的一条线。达标不奖励，越线当天就看得见。</p>
       <ul class="rules" id="rules"></ul>
 
-      <form class="card form" id="ruleForm" hidden>
-        <div class="card-head"><h3>新条款</h3><button class="icon-btn" type="button" id="ruleFormClose" aria-label="收起">✕</button></div>
-        <label class="field">
-          <span>类型</span>
-          <select id="ruleType">
-            <option value="focus">自己的时间</option>
-            <option value="game">游戏</option>
-            <option value="sleep">睡眠</option>
-          </select>
-        </label>
-        <div class="field-row">
-          <label class="field">
-            <span>比较</span>
-            <select id="ruleCmp">
-              <option value="lte">不超过（≤）</option>
-              <option value="gte">不少于（≥）</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>时长（分钟）</span>
-            <input id="ruleMinutes" type="number" min="5" max="1440" step="5" value="60" inputmode="numeric">
-          </label>
-        </div>
-        <label class="field">
-          <span>显示名（可选）</span>
-          <input id="ruleLabel" type="text" maxlength="24" placeholder="留空自动生成">
-        </label>
-        <button class="btn-primary" type="submit">加进清单</button>
-      </form>
     </section>
 
     <!-- ========== 复盘 ========== -->
@@ -163,7 +134,7 @@
         <button class="btn-danger" id="clearBtn" type="button">清空全部记录</button>
       </div>
 
-      <p class="version">时光账本 v1.1 · 阶段一（PWA）</p>
+      <p class="version">时光账本 v1.2 · 阶段一（PWA）</p>
     </section>
   </main>
 
@@ -219,6 +190,22 @@
       <h3 id="editTitle">编辑记录</h3>
       <span class="sheet-dur" id="editDur">—</span>
     </div>
+
+    <p class="sheet-label">类型</p>
+    <div class="chips" id="editTypes" role="group" aria-label="类型">
+      <button class="chip" data-type="focus" type="button">自己的时间</button>
+      <button class="chip" data-type="game" type="button">游戏</button>
+      <button class="chip" data-type="sleep" type="button">睡眠</button>
+    </div>
+
+    <p class="sheet-label">时间</p>
+    <div class="time-row">
+      <label class="time-field"><span>开始</span><input type="time" id="editStart" step="60"></label>
+      <span class="time-dash" aria-hidden="true">—</span>
+      <label class="time-field"><span>结束</span><input type="time" id="editEnd" step="60"></label>
+    </div>
+    <p class="hint tiny" id="editTimeHint">结束时间早于开始，会自动算到第二天。</p>
+
     <p class="sheet-label">结束原因</p>
     <div class="chips" id="editChips" role="group" aria-label="结束原因">
       <button class="chip" data-reason="natural" type="button">自然结束</button>
@@ -226,11 +213,58 @@
       <button class="chip" data-reason="switched" type="button">切走了</button>
       <button class="chip" data-reason="manual" type="button">手动收尾</button>
     </div>
+
     <p class="sheet-label">备注</p>
     <textarea id="editNote" rows="2" maxlength="200" placeholder="补一句"></textarea>
+
     <div class="sheet-actions">
       <button class="btn-danger-ghost" id="editDelete" type="button">删除</button>
       <button class="btn-primary" id="editSave" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 加一条底线 -->
+<div class="sheet-mask" id="ruleSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ruleSheetTitle">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h3 id="ruleSheetTitle">加一条底线</h3>
+      <span class="sheet-dur" id="rulePreview">—</span>
+    </div>
+
+    <p class="sheet-label">哪一类</p>
+    <div class="chips" id="ruleTypeChips" role="group" aria-label="类型">
+      <button class="chip is-on" data-rule-type="focus" type="button">自己的时间</button>
+      <button class="chip" data-rule-type="game" type="button">游戏</button>
+      <button class="chip" data-rule-type="sleep" type="button">睡眠</button>
+    </div>
+
+    <p class="sheet-label">怎么算</p>
+    <div class="chips" id="ruleCmpChips" role="group" aria-label="比较方式">
+      <button class="chip is-on" data-cmp="lte" type="button">不超过（≤）</button>
+      <button class="chip" data-cmp="gte" type="button">不少于（≥）</button>
+    </div>
+
+    <p class="sheet-label">时长</p>
+    <div class="num-row">
+      <input id="ruleMinutes" type="number" inputmode="numeric" min="1" max="1440" step="5" value="60">
+      <span>分钟</span>
+    </div>
+    <div class="quick-row" id="ruleQuick">
+      <button type="button" data-min="30">30 分</button>
+      <button type="button" data-min="60">1 小时</button>
+      <button type="button" data-min="90">1.5 小时</button>
+      <button type="button" data-min="420">7 小时</button>
+      <button type="button" data-min="480">8 小时</button>
+    </div>
+
+    <p class="sheet-label">显示名（可选）</p>
+    <input id="ruleLabel" type="text" maxlength="24" placeholder="留空自动生成，比如「游戏 ≤ 1 小时」">
+
+    <div class="sheet-actions">
+      <button class="btn-ghost" id="ruleCancel" type="button">取消</button>
+      <button class="btn-primary" id="ruleSave" type="button">加进清单</button>
     </div>
   </div>
 </div>

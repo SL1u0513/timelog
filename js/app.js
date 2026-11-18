@@ -251,24 +251,47 @@
       if (!chip) return;
       $$('#editChips .chip').forEach(function (c) { c.classList.toggle('is-on', c === chip); });
     });
+    $('#editTypes').addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-type]');
+      if (!chip) return;
+      $$('#editTypes .chip').forEach(function (c) { c.classList.toggle('is-on', c === chip); });
+      $('#editTitle').textContent = TYPES[chip.dataset.type].label + ' · ' + $('#editStart').value;
+    });
+    $('#editStart').addEventListener('input', syncEditMeta);
+    $('#editEnd').addEventListener('input', syncEditMeta);
     $('#editSave').addEventListener('click', saveEdit);
     $('#editDelete').addEventListener('click', deleteEdit);
 
     // 点击遮罩关闭
-    [$('#stopSheet'), $('#editSheet')].forEach(function (mask) {
+    [$('#stopSheet'), $('#editSheet'), $('#ruleSheet')].forEach(function (mask) {
       mask.addEventListener('click', function (e) {
         if (e.target === mask) closeSheet(mask);
       });
     });
 
     // 底线
-    $('#addRuleBtn').addEventListener('click', function () {
-      var f = $('#ruleForm');
-      f.hidden = !f.hidden;
-      if (!f.hidden) $('#ruleMinutes').focus();
+    $('#addRuleBtn').addEventListener('click', openRuleSheet);
+    $('#ruleCancel').addEventListener('click', function () { closeSheet($('#ruleSheet')); });
+    $('#ruleSave').addEventListener('click', saveRule);
+    $('#ruleTypeChips').addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-rule-type]');
+      if (!chip) return;
+      $$('#ruleTypeChips .chip').forEach(function (c) { c.classList.toggle('is-on', c === chip); });
+      updateRulePreview();
     });
-    $('#ruleFormClose').addEventListener('click', function () { $('#ruleForm').hidden = true; });
-    $('#ruleForm').addEventListener('submit', addRule);
+    $('#ruleCmpChips').addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-cmp]');
+      if (!chip) return;
+      $$('#ruleCmpChips .chip').forEach(function (c) { c.classList.toggle('is-on', c === chip); });
+      updateRulePreview();
+    });
+    $('#ruleQuick').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-min]');
+      if (!b) return;
+      $('#ruleMinutes').value = b.dataset.min;
+      updateRulePreview();
+    });
+    $('#ruleMinutes').addEventListener('input', updateRulePreview);
     $('#rules').addEventListener('click', function (e) {
       var del = e.target.closest('[data-del]');
       if (del) { removeRule(del.dataset.del); return; }
@@ -822,27 +845,45 @@
     }).join('');
   }
 
-  function addRule(e) {
-    e.preventDefault();
-    var type = $('#ruleType').value;
-    var cmp = $('#ruleCmp').value;
+  function updateRulePreview() {
+    var type = ($('#ruleTypeChips .chip.is-on') || {}).dataset;
+    var cmp = ($('#ruleCmpChips .chip.is-on') || {}).dataset;
+    var min = parseInt($('#ruleMinutes').value, 10);
+    var el = $('#rulePreview');
+    if (!el) return;
+    if (!type || !min || min < 1) { el.textContent = '—'; return; }
+    el.textContent = TYPES[type.ruleType].label + ' ' +
+      (cmp && cmp.cmp === 'lte' ? '≤' : '≥') + ' ' + fmtMin(min * 60000);
+  }
+
+  function openRuleSheet() {
+    $$('#ruleTypeChips .chip').forEach(function (c, i) { c.classList.toggle('is-on', i === 0); });
+    $$('#ruleCmpChips .chip').forEach(function (c, i) { c.classList.toggle('is-on', i === 0); });
+    $('#ruleMinutes').value = 60;
+    $('#ruleLabel').value = '';
+    updateRulePreview();
+    openSheet($('#ruleSheet'));
+  }
+
+  function saveRule() {
+    var typeChip = $('#ruleTypeChips .chip.is-on');
+    var cmpChip = $('#ruleCmpChips .chip.is-on');
     var minutes = parseInt($('#ruleMinutes').value, 10);
     var label = $('#ruleLabel').value.trim();
 
+    if (!typeChip || !cmpChip) { toast('先选一类和算法'); return; }
     if (!minutes || minutes < 1 || minutes > 1440) { toast('时长填 1–1440 分钟'); return; }
 
     settings.rules.push({
       id: 'r-' + Date.now().toString(36),
-      type: type,
-      cmp: cmp,
+      type: typeChip.dataset.ruleType,
+      cmp: cmpChip.dataset.cmp,
       minutes: minutes,
       label: label,
       enabled: true
     });
     saveSettings();
-    $('#ruleForm').reset();
-    $('#ruleForm').hidden = true;
-    $('#ruleMinutes').value = 60;
+    closeSheet($('#ruleSheet'));
     renderRules(currentTotals);
     renderStats(currentTotals, countByType());
     toast('已加入底线清单');
@@ -966,6 +1007,15 @@
 
   /* ================= 编辑记录 ================= */
 
+  function timeToMinutes(v) {
+    var p = String(v || '00:00').split(':');
+    return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
+  }
+  function minutesToTime(ts) {
+    var d = new Date(ts);
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
   function openEditSheet(id) {
     var ev = null;
     for (var i = 0; i < allEvents.length; i++) {
@@ -973,24 +1023,81 @@
     }
     if (!ev) return;
     editing = ev;
-    var t = TYPES[ev.type];
-    $('#editTitle').textContent = t.label + ' · ' + fmtTime(ev.startAt);
+
+    $('#editTitle').textContent = TYPES[ev.type].label + ' · ' + fmtTime(ev.startAt);
     $('#editDur').textContent = fmtMin(durationOf(ev));
     $('#editNote').value = ev.note || '';
+
+    $$('#editTypes .chip').forEach(function (c) {
+      c.classList.toggle('is-on', c.dataset.type === ev.type);
+    });
     $$('#editChips .chip').forEach(function (c) {
       c.classList.toggle('is-on', c.dataset.reason === (ev.endReason || 'natural'));
     });
+
+    $('#editStart').value = minutesToTime(ev.startAt);
+    var endEl = $('#editEnd');
+    var hint = $('#editTimeHint');
+    if (ev.endAt == null) {
+      endEl.value = '';
+      endEl.disabled = true;
+      hint.textContent = '这段还在进行中，结束时间会在你点「结束」时写入。';
+    } else {
+      endEl.value = minutesToTime(ev.endAt);
+      endEl.disabled = false;
+      hint.textContent = '结束时间早于开始，会自动算到第二天。';
+    }
+
     openSheet($('#editSheet'));
   }
 
+  /* 改时间时标题和时长跟着动，免得保存前看不到结果 */
+  function syncEditMeta() {
+    if (!editing) return;
+    var typeChip = $('#editTypes .chip.is-on');
+    var label = typeChip ? TYPES[typeChip.dataset.type].label : TYPES[editing.type].label;
+    $('#editTitle').textContent = label + ' · ' + $('#editStart').value;
+
+    var base = dayStart(editing.startAt);
+    var startAt = base + timeToMinutes($('#editStart').value) * 60000;
+    var dur = 0;
+    if (editing.endAt == null) {
+      dur = Math.max(0, Date.now() - startAt);
+    } else {
+      var e = base + timeToMinutes($('#editEnd').value) * 60000;
+      while (e <= startAt) e += 86400000;
+      dur = e - startAt;
+    }
+    $('#editDur').textContent = fmtMin(dur);
+  }
+
+  /* 改类型、改起止时间、改原因，都在这里落库 */
   function saveEdit() {
     if (!editing) return;
-    var reason = ($('#editChips .chip.is-on') || {}).dataset;
-    var note = $('#editNote').value.trim();
+
+    var typeChip = $('#editTypes .chip.is-on');
+    var reasonChip = $('#editChips .chip.is-on');
+    if (!typeChip) { toast('先选一个类型'); return; }
+
+    var base = dayStart(editing.startAt);
+    var startAt = base + timeToMinutes($('#editStart').value) * 60000;
+    var isOpen = editing.endAt == null;
+    var endAt = editing.endAt;
+
+    if (!isOpen) {
+      var e = base + timeToMinutes($('#editEnd').value) * 60000;
+      while (e <= startAt) e += 86400000;
+      endAt = e;
+    }
+
     var ev = Object.assign({}, editing, {
-      endReason: reason ? reason.reason : (editing.endReason || 'natural'),
-      note: note
+      type: typeChip.dataset.type,
+      startAt: startAt,
+      endAt: endAt,
+      endReason: isOpen ? null : (reasonChip ? reasonChip.dataset.reason : (editing.endReason || 'natural')),
+      note: $('#editNote').value.trim()
     });
+
     TimeDB.putEvent(ev).then(function () {
       closeSheet($('#editSheet'));
       editing = null;

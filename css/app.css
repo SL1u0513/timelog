@@ -125,14 +125,14 @@ ul { margin: 0; padding: 0; list-style: none; }
   gap: 12px;
   margin: 24px 4px 10px;
 }
-.section-head h2 { white-space: nowrap; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: .08em; }
+.section-head h2 { white-space: nowrap; font-size: 14.5px; color: var(--muted); font-weight: 600; letter-spacing: .08em; }
 .section-meta { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
 
 .card {
   background: linear-gradient(180deg, rgba(255, 255, 255, .028), rgba(255, 255, 255, 0)) , var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 15px;
 }
 
 .card-head {
@@ -468,9 +468,9 @@ ul { margin: 0; padding: 0; list-style: none; }
 .entry {
   --c: var(--focus);
   display: flex;
-  gap: 11px;
+  gap: 10px;
   align-items: flex-start;
-  padding: 12px 13px;
+  padding: 11px 12px;
   border-radius: 15px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -525,8 +525,8 @@ ul { margin: 0; padding: 0; list-style: none; }
 .rule {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  gap: 11px;
+  padding: 13px 14px;
   border-radius: 16px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -572,23 +572,69 @@ ul { margin: 0; padding: 0; list-style: none; }
 .form { display: grid; gap: 12px; margin-top: 12px; }
 
 .field { display: grid; gap: 6px; }
-.field > span { font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
+.field > span { font-size: 12px; color: var(--muted); letter-spacing: .04em; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-input[type="text"], input[type="number"], input[type="date"], select, textarea {
+input[type="text"], input[type="number"], input[type="date"], input[type="time"], select, textarea {
   width: 100%;
-  padding: 11px 12px;
+  min-height: 46px;
+  padding: 12px 13px;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: rgba(0, 0, 0, .22);
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
   outline: none;
   transition: border-color .15s, background .15s;
   -webkit-appearance: none;
   appearance: none;
 }
 textarea { resize: vertical; line-height: 1.6; min-height: 46px; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="time"] { font-variant-numeric: tabular-nums; }
+
+/* 数字 + 单位 */
+.num-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.num-row input {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  text-align: center;
+}
+.num-row > span { flex: none; font-size: 13px; color: var(--muted); padding-right: 4px; }
+
+/* 快捷时长 */
+.quick-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.quick-row button {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .03);
+  color: var(--muted);
+  font-size: 12px;
+}
+.quick-row button:active { background: rgba(245, 182, 66, .16); color: var(--focus); }
+
+/* 起止时间 */
+.time-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 10px;
+}
+.time-field { display: grid; gap: 6px; min-width: 0; }
+.time-field > span { font-size: 11.5px; color: var(--dim); letter-spacing: .04em; }
+.time-field input { font-size: 16px; text-align: center; }
+.time-dash { color: var(--dim); padding-bottom: 12px; font-size: 13px; }
+.hint.tiny { font-size: 11.5px; margin-top: 7px; }
 input:focus, select:focus, textarea:focus { border-color: rgba(245, 182, 66, .5); background: rgba(0, 0, 0, .3); }
 ::placeholder { color: #545c6e; }
 select {
@@ -606,13 +652,13 @@ input.date-input {
 
 .btn-primary {
   width: 100%;
-  padding: 13px;
+  padding: 12px;
   border-radius: 13px;
   border: 1px solid rgba(245, 182, 66, .35);
   background: linear-gradient(180deg, #f8c459, #eda92c);
   color: #23180a;
   font-weight: 650;
-  font-size: 14.5px;
+  font-size: 15px;
   transition: filter .15s, transform .12s;
 }
 .btn-primary:hover { filter: brightness(1.05); }
@@ -769,18 +815,24 @@ input.date-input {
 .sheet-head h3 { font-size: 17px; }
 .sheet-dur { font-family: var(--mono); font-size: 15px; color: var(--focus); font-variant-numeric: tabular-nums; }
 
-.sheet-label { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; letter-spacing: .05em; }
-.sheet .chips { margin-bottom: 16px; }
-.sheet textarea { margin-bottom: 16px; }
+.sheet-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 16px 0 8px;
+  letter-spacing: .05em;
+}
+.sheet-label:first-of-type { margin-top: 0; }
+.sheet .chips { margin-bottom: 0; }
+.sheet textarea { margin-bottom: 0; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
-  padding: 8px 14px;
+  padding: 8px 13px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: rgba(255, 255, 255, .035);
   color: var(--muted);
-  font-size: 13px;
+  font-size: 13.5px;
   transition: all .15s;
 }
 .chip.is-on {
@@ -790,7 +842,7 @@ input.date-input {
   font-weight: 600;
 }
 
-.sheet-actions { display: flex; gap: 10px; }
+.sheet-actions { display: flex; gap: 10px; margin-top: 20px; }
 .sheet-actions .btn-ghost { flex: 0 0 92px; }
 .sheet-actions .btn-primary { flex: 1; }
 .sheet-actions .btn-danger-ghost { flex: 0 0 76px; }
