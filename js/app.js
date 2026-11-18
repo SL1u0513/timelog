@@ -38,6 +38,7 @@
     warnBefore: 10,      // 提前多少分钟预警
     sleepTarget: 480,    // 睡眠目标（分钟）
     focusTarget: 120,    // 自己的时间软目标（分钟）
+    gameGate: true,      // 开始游戏前先问一句
     rules: [
       { id: 'r-game', type: 'game', cmp: 'lte', minutes: 60, label: '游戏 ≤ 1 小时', enabled: true },
       { id: 'r-sleep', type: 'sleep', cmp: 'gte', minutes: 420, label: '睡眠 ≥ 7 小时', enabled: true },
@@ -262,11 +263,11 @@
     // 主区委托：开始 / 结束 / 切换 / 编辑
     $('#hero').addEventListener('click', function (e) {
       var startBtn = e.target.closest('[data-start]');
-      if (startBtn) { startType(startBtn.dataset.start); return; }
+      if (startBtn) { requestStart(startBtn.dataset.start); return; }
       if (e.target.closest('#pauseBtn')) { isPaused() ? resumeFocus() : pauseFocus(); return; }
       if (e.target.closest('#stopBtn')) { openStopSheet(); return; }
       var sw = e.target.closest('[data-switch]');
-      if (sw) { switchTo(sw.dataset.switch); }
+      if (sw) { requestStart(sw.dataset.switch, true); }
     });
 
     $('#timeline').addEventListener('click', function (e) {
@@ -376,7 +377,15 @@
 
     if (name === 'rules') renderRules(currentTotals);
     if (name === 'review') loadReview($('#reviewDate').value || todayKey());
-    if (name === 'data') { updateStorageEstimate(); renderInstallCard(); }
+    if (name === 'data') {
+      updateStorageEstimate();
+      renderInstallCard();
+      var gt = $('#gateToggle');
+      if (gt) {
+        gt.classList.toggle('is-on', !!settings.gameGate);
+        gt.setAttribute('aria-checked', settings.gameGate ? 'true' : 'false');
+      }
+    }
   }
 
   function restoreTab() {
@@ -481,6 +490,34 @@
     tick();
     toast('继续 · 刚才那段不算');
     vibrate(8);
+  }
+
+  /* 开始前的临门一问：只有「游戏」会拦一下，因为它最容易是逃避 */
+  function requestStart(type, isSwitch) {
+    if (type === 'game' && settings.gameGate) {
+      openGate(!!isSwitch);
+      return;
+    }
+    if (isSwitch) switchTo(type);
+    else startType(type);
+  }
+
+  var gateFromSwitch = false;
+
+  function openGate(fromSwitch) {
+    gateFromSwitch = !!fromSwitch;
+    $('#gateTime').textContent = fmtTime(Date.now());
+    openSheet($('#gateSheet'));
+  }
+
+  function resistKey() {
+    return 'timelog.resists.' + todayKey();
+  }
+  function resistCount() {
+    try { return parseInt(localStorage.getItem(resistKey()), 10) || 0; } catch (e) { return 0; }
+  }
+  function addResist() {
+    try { localStorage.setItem(resistKey(), String(resistCount() + 1)); } catch (e) { /* ignore */ }
   }
 
   function switchTo(type) {
@@ -784,8 +821,10 @@
     var awake = Math.max(0, (now - dayFrom) - totals.sleep);
     if (awake < 30 * 60000) { el.hidden = true; return; }
     var pct = Math.round((totals.focus / awake) * 100);
+    var stopped = resistCount();
     el.innerHTML = '醒着 <b>' + fmtMin(awake) + '</b>，其中 <b>' + fmtMin(totals.focus) +
-      '</b>由你自己掌握（<b>' + pct + '%</b>）';
+      '</b>由你自己掌握（<b>' + pct + '%</b>）' +
+      (stopped ? ' · 今天拦下自己 <b>' + stopped + '</b> 次' : '');
     el.hidden = false;
   }
 
@@ -1438,6 +1477,26 @@
       toast('装好了，回桌面看看');
     });
     $('#copyUrlBtn').addEventListener('click', copyUrl);
+    $('#gateOk').addEventListener('click', function () {
+      closeSheet($('#gateSheet'));
+      if (gateFromSwitch) switchTo('game');
+      else startType('game');
+    });
+    $('#gateCancel').addEventListener('click', function () {
+      closeSheet($('#gateSheet'));
+      addResist();
+      renderToday();
+      toast('记下了：没开始也是一种选择');
+      vibrate(12);
+    });
+    var gt = $('#gateToggle');
+    if (gt) gt.addEventListener('click', function () {
+      settings.gameGate = !settings.gameGate;
+      saveSettings();
+      gt.classList.toggle('is-on', settings.gameGate);
+      gt.setAttribute('aria-checked', settings.gameGate ? 'true' : 'false');
+      toast(settings.gameGate ? '开始游戏前会先问一句' : '已关掉，游戏直接开始');
+    });
     var upd = $('#updateBtn');
     if (upd) upd.addEventListener('click', checkUpdate);
     renderInstallCard();

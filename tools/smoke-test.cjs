@@ -74,8 +74,10 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
     throw new Error('落库内容不对：' + JSON.stringify(stored[0]))
   }
 
-  // ---- 游戏时间盒
+  // ---- 游戏时间盒（先过「临门一问」）
   await page.click('[data-start="game"]')
+  await page.waitForSelector('#gateSheet.is-open')
+  await page.click('#gateOk')
   await page.waitForSelector('#boxBar')
   await page.waitForTimeout(1200)
   const boxText = await page.textContent('.box-row')
@@ -187,6 +189,8 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
     window.__timelog.settings.warnBefore = 0.05
   })
   await warnPage.click('[data-start="game"]')
+  await warnPage.waitForSelector('#gateSheet.is-open')
+  await warnPage.click('#gateOk')
   await warnPage.waitForTimeout(4200)
   const warnNear = await warnPage.evaluate(() => {
     const w = document.querySelector('#warnBox')

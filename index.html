@@ -129,13 +129,20 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="card-head"><h3>开始前先问一句</h3>
+          <button class="switch is-on" id="gateToggle" type="button" role="switch" aria-checked="true" aria-label="开始游戏前先问一句"></button>
+        </div>
+        <p class="hint">打开后，每次点「游戏」都会先停下来问一句：是我选的，还是不知道干什么。按「算了」也算一次记录。</p>
+      </div>
+
       <div class="card danger-card">
         <div class="card-head"><h3>清空</h3></div>
         <p class="hint">删掉全部事件与复盘，设置项保留。此操作不可撤销，导出了再动手。</p>
         <button class="btn-danger" id="clearBtn" type="button">清空全部记录</button>
       </div>
 
-      <p class="version">时光账本 v1.3 · 阶段一（PWA）</p>
+      <p class="version">时光账本 v1.4 · 阶段一（PWA）</p>
     </section>
   </main>
 
@@ -222,6 +229,27 @@
       <button class="btn-danger-ghost" id="editDelete" type="button">删除</button>
       <button class="btn-primary" id="editSave" type="button">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- 开始游戏前的临门一问 -->
+<div class="sheet-mask" id="gateSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h3 id="gateTitle">先问一句</h3>
+      <span class="sheet-dur" id="gateTime">—</span>
+    </div>
+    <p class="gate-q">这段游戏，是我选的，还是不知道干什么？</p>
+    <ul class="gate-list">
+      <li>现在做，值不值得？</li>
+      <li>这是休息，还是躲？</li>
+    </ul>
+    <div class="sheet-actions">
+      <button class="btn-ghost" id="gateCancel" type="button">算了，不做了</button>
+      <button class="btn-primary" id="gateOk" type="button">是我选的，开始</button>
+    </div>
+    <p class="gate-foot">多这一层想，就够了。按「算了」也会记下来。</p>
   </div>
 </div>
 
