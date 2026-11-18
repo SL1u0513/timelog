@@ -312,7 +312,7 @@
 
     if (name === 'rules') renderRules(currentTotals);
     if (name === 'review') loadReview($('#reviewDate').value || todayKey());
-    if (name === 'data') updateStorageEstimate();
+    if (name === 'data') { updateStorageEstimate(); renderInstallCard(); }
   }
 
   function restoreTab() {
@@ -1111,18 +1111,116 @@
 
   var deferredPrompt = null;
 
+  /* 装到主屏：不同浏览器的入口不一样，装不上时得给具体路径 */
+  var INSTALL_STEPS = {
+    edge: [
+      '点右上角 <b>⋮</b> 菜单',
+      '找 <b>添加到手机</b>（有的版本叫「安装应用」）',
+      '没反应就去系统设置 → 应用 → Edge → 权限，把 <b>桌面快捷方式</b> 打开'
+    ],
+    chrome: [
+      '点右上角 <b>⋮</b> 菜单',
+      '选 <b>添加到主屏幕</b> / <b>安装应用</b>',
+      '没有 Google 服务的机型可能只生成普通快捷方式，图标一样在桌面'
+    ],
+    miui: [
+      '点底部的菜单按钮',
+      '选 <b>添加到桌面</b>',
+      '小米 / 红米：设置 → 应用设置 → 应用管理 → 浏览器 → 权限，允许 <b>桌面快捷方式</b>'
+    ],
+    huawei: [
+      '点底部菜单',
+      '选 <b>添加到桌面</b>',
+      '鸿蒙 / EMUI 也要在权限里允许 <b>创建桌面快捷方式</b>'
+    ],
+    quark: ['点底部菜单', '选 <b>添加到桌面</b>'],
+    samsung: ['点右下角 <b>≡</b>', '选 <b>添加页面到</b> → <b>主屏幕</b>'],
+    opera: ['点右下角 <b>O</b> 菜单', '选 <b>添加到主屏幕</b>'],
+    firefox: ['点 <b>⋮</b> 菜单', '选 <b>添加到主屏幕</b>', '火狐只能加快捷方式，不会全屏独立打开'],
+    wechat: ['点右上角 <b>…</b>', '选 <b>在浏览器打开</b>', '微信内置浏览器不给装，换系统浏览器再添加'],
+    ios: ['必须用 Safari 打开', '点底部 <b>分享</b> → <b>添加到主屏幕</b>'],
+    other: ['浏览器菜单里找 <b>添加到主屏幕</b> / <b>安装应用</b>']
+  };
+
+  function browserKind() {
+    var ua = navigator.userAgent || '';
+    if (/MicroMessenger/i.test(ua)) return 'wechat';
+    if (/EdgA?\//i.test(ua)) return 'edge';
+    if (/HuaweiBrowser|HarmonyOS/i.test(ua)) return 'huawei';
+    if (/MiuiBrowser/i.test(ua)) return 'miui';
+    if (/Quark/i.test(ua)) return 'quark';
+    if (/SamsungBrowser/i.test(ua)) return 'samsung';
+    if (/OPR\//i.test(ua)) return 'opera';
+    if (/Firefox\//i.test(ua)) return 'firefox';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+    if (/Chrome\//i.test(ua)) return 'chrome';
+    return 'other';
+  }
+
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      window.navigator.standalone === true;
+  }
+
+  function renderInstallCard() {
+    var state = $('#installState');
+    var hint = $('#installHint');
+    var stepsEl = $('#installSteps');
+    var btn = $('#installBtn');
+    if (!state || !hint || !stepsEl || !btn) return;
+
+    if (isStandalone()) {
+      state.textContent = '已安装';
+      hint.textContent = '你现在就是装好的状态：独立窗口、没有地址栏。';
+      stepsEl.hidden = true;
+      btn.hidden = true;
+      return;
+    }
+
+    if (deferredPrompt) {
+      state.textContent = '可安装';
+      hint.textContent = '这台浏览器支持直接安装，点下面的按钮。';
+      stepsEl.hidden = true;
+      btn.hidden = false;
+      return;
+    }
+
+    var kind = browserKind();
+    var steps = INSTALL_STEPS[kind] || INSTALL_STEPS.other;
+    state.textContent = '手动添加';
+    hint.textContent = '当前浏览器没有给出安装入口，按下面的步骤加：';
+    stepsEl.innerHTML = steps.map(function (s) { return '<li>' + s + '</li>'; }).join('') +
+      '<li class="steps-tip">桌面还是没出现？长按桌面空白看看是不是被收进「全部应用」了；或在别的浏览器里打开这个链接再试一次。</li>';
+    stepsEl.hidden = false;
+    btn.hidden = true;
+  }
+
+  function copyUrl() {
+    var url = location.href.split('#')[0].split('?')[0];
+    var done = function () { toast('链接已复制，粘到别的浏览器里打开'); };
+    var fail = function () {
+      window.prompt('手动复制这个链接：', url);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
+
   function bindInstall() {
     window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       deferredPrompt = e;
-      var btn = $('#installBtn');
-      if (btn) btn.hidden = false;
+      renderInstallCard();
     });
     window.addEventListener('appinstalled', function () {
-      var btn = $('#installBtn');
-      if (btn) btn.hidden = true;
-      toast('已装到主屏');
+      deferredPrompt = null;
+      renderInstallCard();
+      toast('装好了，回桌面看看');
     });
+    $('#copyUrlBtn').addEventListener('click', copyUrl);
+    renderInstallCard();
   }
 
   function doInstall() {

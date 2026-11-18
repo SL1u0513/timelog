@@ -2,7 +2,7 @@
  * 界面骨架缓存优先，导航请求网络优先（断网回落到缓存）
  * 改代码后把 CACHE 版本号 +1，旧缓存会在 activate 时清掉
  */
-var CACHE = 'timelog-v1';
+var CACHE = 'timelog-v2';
 
 var ASSETS = [
   './',
