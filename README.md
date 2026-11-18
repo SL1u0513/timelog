@@ -4,6 +4,8 @@
 
 原生 HTML + CSS + JS，**零依赖、零构建**，把文件夹丢到任意静态托管就能跑；手机浏览器打开 → 添加到主屏幕 → 全屏、断网可用。
 
+**已上线：<https://sl1u0513.github.io/timelog/>** —— 手机用 Edge 打开，菜单 →「添加到手机」，桌面就有独立图标。
+
 ---
 
 ## 现在能做什么（P0 + P1）
@@ -39,17 +41,24 @@ python -m http.server 8765
 
 > 局域网只能调试：手机浏览器不会把它当成可安装的 PWA（需要 HTTPS）。
 
-### 部署（二选一）
+### 部署（已部署）
 
-**GitHub Pages**（推荐，免费且是 HTTPS）
+线上地址 <https://sl1u0513.github.io/timelog/>，仓库 <https://github.com/SL1u0513/timelog>（公开，只有程序文件，记录都留在手机本地）。
 
 ```bash
-cd timelog
+# 常规方式
 git init && git add . && git commit -m "init"
-git remote add origin https://github.com/<你>/<仓库>.git
-git push -u origin main
+git remote add origin https://github.com/<你>/<仓库>.git && git push -u origin main
 # 仓库 Settings → Pages → Source: Deploy from a branch → main / (root)
 ```
+
+> 如果所在网络 `git push` 到 github.com 被重置（本机就是这种情况），改用 API 直传，一条 commit 覆盖线上：
+>
+> ```bash
+> node tools/push-via-api.cjs SL1u0513/timelog main "deploy: 改了什么"
+> ```
+>
+> 依赖已登录的 `gh`（`gh auth login`），走 `api.github.com`，不经过 git 协议。
 
 **Vercel / Netlify**：把 `timelog` 文件夹拖进去，不需要构建命令，发布目录填 `.`。
 
