@@ -135,9 +135,49 @@
     return Math.max(0, Math.min(e, to) - Math.max(s, from));
   }
 
+  function pausesOf(ev) {
+    return Array.isArray(ev.pauses) ? ev.pauses : [];
+  }
+
+  /* 暂停的区间长度（还没结束的那段按「到现在」算） */
+  function pauseSpan(p, end) {
+    var pe = p.to == null ? end : p.to;
+    return Math.max(0, pe - p.from);
+  }
+
+  /* 有效时长 = 墙钟时长 - 暂停。暂停不算「自己的时间」 */
+  function activeMs(ev, upto) {
+    var end = ev.endAt == null ? (upto || Date.now()) : ev.endAt;
+    var total = Math.max(0, end - ev.startAt);
+    var list = pausesOf(ev);
+    for (var i = 0; i < list.length; i++) {
+      total -= Math.min(pauseSpan(list[i], end), Math.max(0, end - Math.max(list[i].from, ev.startAt)));
+    }
+    if (ev.endAt == null && ev.pausedAt) {
+      total -= Math.max(0, end - Math.max(ev.pausedAt, ev.startAt));
+    }
+    return Math.max(0, total);
+  }
+
   function durationOf(ev) {
-    var e = ev.endAt == null ? Date.now() : ev.endAt;
-    return Math.max(0, e - ev.startAt);
+    return activeMs(ev);
+  }
+
+  /* 落在某一天里的有效时长（跨天 + 暂停都算清楚） */
+  function overlapActiveMs(ev, from, to) {
+    var ov = overlapMs(ev, from, to);
+    if (!ov) return 0;
+    var end = ev.endAt == null ? Date.now() : ev.endAt;
+    var list = pausesOf(ev);
+    for (var i = 0; i < list.length; i++) {
+      var ps = list[i].from;
+      var pe = list[i].to == null ? end : list[i].to;
+      ov -= Math.max(0, Math.min(pe, to) - Math.max(ps, from));
+    }
+    if (ev.endAt == null && ev.pausedAt) {
+      ov -= Math.max(0, Math.min(end, to) - Math.max(ev.pausedAt, from));
+    }
+    return Math.max(0, ov);
   }
 
   /* ================= 设置 ================= */
@@ -223,6 +263,7 @@
     $('#hero').addEventListener('click', function (e) {
       var startBtn = e.target.closest('[data-start]');
       if (startBtn) { startType(startBtn.dataset.start); return; }
+      if (e.target.closest('#pauseBtn')) { isPaused() ? resumeFocus() : pauseFocus(); return; }
       if (e.target.closest('#stopBtn')) { openStopSheet(); return; }
       var sw = e.target.closest('[data-switch]');
       if (sw) { switchTo(sw.dataset.switch); }
@@ -385,7 +426,9 @@
         state: 'open',
         leftCount: 0,
         leftAt: null,
-        warnedAt: null
+        warnedAt: null,
+        pauses: [],
+        pausedAt: null
       };
       return TimeDB.putEvent(ev).then(function () { openEvent = ev; });
     }).then(function () {
@@ -401,6 +444,45 @@
     });
   }
 
+  function isPaused() {
+    return !!(openEvent && openEvent.pausedAt);
+  }
+
+  function syncOpenIntoLists(ev) {
+    for (var i = 0; i < allEvents.length; i++) {
+      if (allEvents[i].id === ev.id) { allEvents[i] = ev; return; }
+    }
+    allEvents.push(ev);
+  }
+
+  function pauseFocus() {
+    if (!openEvent || openEvent.type !== 'focus' || openEvent.pausedAt) return;
+    var ev = Object.assign({}, openEvent, { pausedAt: Date.now() });
+    openEvent = ev;
+    syncOpenIntoLists(ev);
+    TimeDB.putEvent(ev).catch(function () {});
+    renderHero();
+    renderToday();
+    tick();
+    toast('已暂停，这段空档不算你的时间');
+    vibrate(8);
+  }
+
+  function resumeFocus() {
+    if (!openEvent || !openEvent.pausedAt) return;
+    var now = Date.now();
+    var pauses = pausesOf(openEvent).concat([{ from: openEvent.pausedAt, to: now }]);
+    var ev = Object.assign({}, openEvent, { pauses: pauses, pausedAt: null });
+    openEvent = ev;
+    syncOpenIntoLists(ev);
+    TimeDB.putEvent(ev).catch(function () {});
+    renderHero();
+    renderToday();
+    tick();
+    toast('继续 · 刚才那段不算');
+    vibrate(8);
+  }
+
   function switchTo(type) {
     if (!openEvent || openEvent.type === type) return;
     startType(type);
@@ -408,10 +490,14 @@
 
   function closeOpen(now, reason, note) {
     if (!openEvent) return Promise.resolve(null);
+    var pauses = pausesOf(openEvent).slice();
+    if (openEvent.pausedAt) pauses.push({ from: openEvent.pausedAt, to: now });
     var ev = Object.assign({}, openEvent, {
       endAt: now,
       endReason: reason,
       state: 'closed',
+      pauses: pauses,
+      pausedAt: null,
       note: typeof note === 'string' ? note : (openEvent.note || '')
     });
     openEvent = null;
@@ -479,7 +565,7 @@
       return;
     }
     var t = TYPES[openEvent.type];
-    hero.className = 'hero card is-running type-' + t.key;
+    hero.className = 'hero card is-running type-' + t.key + (isPaused() ? ' is-paused' : '');
     hero.innerHTML = runningHTML(t);
   }
 
@@ -535,7 +621,10 @@
       '</div>' +
       '<div class="hero-meta" id="heroMeta"></div>' +
       '<div id="heroExtra">' + extra + '</div>' +
-      '<button class="btn-stop" id="stopBtn" type="button">结束这一段</button>' +
+      (t.key === 'focus'
+        ? '<button class="btn-stop" id="pauseBtn" type="button">' + (isPaused() ? '继续' : '暂停') + '</button>' +
+          '<button class="btn-text" id="stopBtn" type="button">结束这一段</button>'
+        : '<button class="btn-stop" id="stopBtn" type="button">结束这一段</button>') +
       '<div class="switch-row"><span>切换</span>' + others + '</div>';
   }
 
@@ -546,10 +635,12 @@
 
     if (!openEvent) return;
 
-    var dur = Date.now() - openEvent.startAt;
+    var dur = activeMs(openEvent);
     var t = TYPES[openEvent.type];
     var timerText = $('#timerText');
     if (timerText) timerText.textContent = fmtClock(dur);
+    var cap = $('#timerCap');
+    if (cap) cap.textContent = isPaused() ? '已暂停' : '已进行';
 
     var ring = $('#ring');
     var p = 0;
@@ -561,8 +652,14 @@
     var meta = $('#heroMeta');
     if (meta) {
       var leftCount = openEvent.leftCount || 0;
-      meta.innerHTML = '从 ' + fmtTime(openEvent.startAt) + ' 开始' +
-        (leftCount > 0 ? ' · 离开过 ' + leftCount + ' 次' : '');
+      var pausedTotal = 0;
+      pausesOf(openEvent).forEach(function (x) { pausedTotal += pauseSpan(x, Date.now()); });
+      if (openEvent.pausedAt) pausedTotal += Date.now() - openEvent.pausedAt;
+      var bits = ['从 ' + fmtTime(openEvent.startAt) + ' 开始'];
+      if (openEvent.pausedAt) bits.push('暂停于 ' + fmtTime(openEvent.pausedAt));
+      if (pausedTotal > 30000) bits.push('累计暂停 ' + fmtMin(pausedTotal));
+      if (leftCount > 0) bits.push('离开过 ' + leftCount + ' 次');
+      meta.textContent = bits.join(' · ');
     }
 
     if (t.key === 'game') updateGameBox(dur);
@@ -657,7 +754,7 @@
 
     allEvents.forEach(function (ev) {
       if (!TYPES[ev.type]) return;
-      var ov = overlapMs(ev, from, to);
+      var ov = overlapActiveMs(ev, from, to);
       if (ov > 0) {
         totals[ev.type] += ov;
         counts[ev.type] += 1;
@@ -674,9 +771,22 @@
     if (tlMeta) tlMeta.textContent = segs ? '共 ' + segs + ' 段' : '';
 
     renderStats(totals, counts);
+    renderTodayLine(totals, from, now);
     renderChart();
     renderTimeline(dayEvents);
     renderRules(totals);
+  }
+
+  /* 醒着的时间里，有多少是你自己掌握的 —— 这才是「在场」要看的数 */
+  function renderTodayLine(totals, dayFrom, now) {
+    var el = $('#todayLine');
+    if (!el) return;
+    var awake = Math.max(0, (now - dayFrom) - totals.sleep);
+    if (awake < 30 * 60000) { el.hidden = true; return; }
+    var pct = Math.round((totals.focus / awake) * 100);
+    el.innerHTML = '醒着 <b>' + fmtMin(awake) + '</b>，其中 <b>' + fmtMin(totals.focus) +
+      '</b>由你自己掌握（<b>' + pct + '%</b>）';
+    el.hidden = false;
   }
 
   function ruleFor(type) {
@@ -697,7 +807,7 @@
         '<div class="stat' + (live ? ' is-live' : '') + '" style="--c:' + t.color + '">' +
           '<div class="stat-top"><span class="dot"></span><span>' + t.label + '</span></div>' +
           '<div class="stat-val">' + fmtMin(totals[k]) + '</div>' +
-          '<div class="stat-sub">' + (counts[k] ? counts[k] + ' 段' : '—') + (live ? ' · 进行中' : '') + '</div>' +
+          '<div class="stat-sub">' + (counts[k] ? counts[k] + ' 段' : '—') + (live ? (isPaused() ? ' · 暂停中' : ' · 进行中') : '') + '</div>' +
           (rule ? '<div class="stat-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div>' : '') +
         '</div>';
     }).join('');
@@ -716,7 +826,7 @@
       var d = { from: from, totals: { focus: 0, game: 0, sleep: 0 }, total: 0 };
       allEvents.forEach(function (ev) {
         if (!TYPES[ev.type]) return;
-        var ov = overlapMs(ev, from, to);
+        var ov = overlapActiveMs(ev, from, to);
         if (ov > 0) { d.totals[ev.type] += ov; d.total += ov; }
       });
       if (d.total > maxMs) maxMs = d.total;
@@ -777,9 +887,12 @@
       var t = TYPES[ev.type];
       var isOpen = ev.state === 'open';
       var dur = durationOf(ev);
+      var pz = pausesOf(ev).length + (ev.pausedAt ? 1 : 0);
       var sub = isOpen
-        ? '从 ' + fmtTime(ev.startAt) + ' 开始 · 进行中'
-        : fmtTime(ev.startAt) + ' – ' + fmtTime(ev.endAt) + (ev.startAt < dayStart(ev.endAt) ? ' · 跨天' : '');
+        ? '从 ' + fmtTime(ev.startAt) + ' 开始 · ' + (ev.pausedAt ? '已暂停' : '进行中')
+        : fmtTime(ev.startAt) + ' – ' + fmtTime(ev.endAt) +
+          (ev.startAt < dayStart(ev.endAt) ? ' · 跨天' : '') +
+          (pz ? ' · 暂停 ' + pz + ' 次' : '');
 
       var badge = '';
       if (isOpen) {
@@ -895,7 +1008,7 @@
     var c = { focus: 0, game: 0, sleep: 0 };
     allEvents.forEach(function (ev) {
       if (!TYPES[ev.type]) return;
-      if (overlapMs(ev, from, to) > 0) c[ev.type] += 1;
+      if (overlapActiveMs(ev, from, to) > 0) c[ev.type] += 1;
     });
     return c;
   }
@@ -922,7 +1035,7 @@
     var st = { focus: 0, game: 0, sleep: 0, count: 0, interrupted: 0 };
     allEvents.forEach(function (ev) {
       if (!TYPES[ev.type]) return;
-      var ov = overlapMs(ev, from, to);
+      var ov = overlapActiveMs(ev, from, to);
       if (ov > 0) {
         st[ev.type] += ov;
         st.count += 1;
@@ -937,18 +1050,16 @@
     var ts = keyToTs(dk);
     var st = dayStats(ts);
 
+    var d = new Date(ts);
     $('#reviewSummary').innerHTML = '' +
-      '<div class="summary-line">' + (dk === todayKey() ? '今天' : (new Date(ts).getMonth() + 1) + ' 月 ' + new Date(ts).getDate() + ' 日') +
-        '记了 <b>' + st.count + '</b> 段，' +
-        '自己的时间 <b>' + fmtMin(st.focus) + '</b>，游戏 <b>' + fmtMin(st.game) + '</b>，睡眠 <b>' + fmtMin(st.sleep) + '</b>' +
-        (st.interrupted ? '，被打断 <b>' + st.interrupted + '</b> 次' : '') + '。' +
-      '</div>' +
       '<div class="summary-grid">' +
         '<div class="summary-cell"><b>' + (st.count || 0) + '</b><span>段数</span></div>' +
         '<div class="summary-cell"><b>' + shortHours(st.focus) + '</b><span>自己的时间</span></div>' +
         '<div class="summary-cell"><b>' + shortHours(st.game) + '</b><span>游戏</span></div>' +
         '<div class="summary-cell"><b>' + shortHours(st.sleep) + '</b><span>睡眠</span></div>' +
-      '</div>';
+      '</div>' +
+      '<p class="summary-foot">' + (new Date(ts).getMonth() + 1) + ' 月 ' + d.getDate() + ' 日' +
+        (st.interrupted ? ' · 被打断 ' + st.interrupted + ' 次' : '') + '</p>';
 
     TimeDB.getReview(dk).then(function (r) {
       $('#reviewA').value = r ? (r.a || '') : '';
