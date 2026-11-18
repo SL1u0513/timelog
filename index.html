@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>时光账本</title>
+<meta name="description" content="自己的时间、游戏、睡眠——手动记录，本地存储，离线可用。">
+<meta name="theme-color" content="#0b0d11">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="时光账本">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="8.2"></circle>
+          <path d="M12 7.4V12l3.1 1.9"></path>
+        </svg>
+      </span>
+      <h1>时光账本</h1>
+    </div>
+    <div class="topdate" id="topDate">—</div>
+  </header>
+
+  <main class="views" id="views">
+
+    <!-- ========== 记录 ========== -->
+    <section class="view is-active" id="view-record" data-view="record" aria-label="记录">
+      <div class="hero card" id="hero"></div>
+
+      <div class="section-head">
+        <h2>今天</h2>
+        <span class="section-meta" id="todaySpan">—</span>
+      </div>
+      <div class="stats" id="stats"></div>
+
+      <div class="card chart-card">
+        <div class="card-head">
+          <h3>近 7 天</h3>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="chart" id="chart"></div>
+        <p class="chart-foot" id="chartFoot"></p>
+      </div>
+
+      <div class="section-head">
+        <h2>时间线</h2>
+        <span class="section-meta" id="timelineMeta"></span>
+      </div>
+      <ul class="timeline" id="timeline"></ul>
+      <p class="empty" id="timelineEmpty" hidden>
+        今天还没有记录。<br>点上面的「自己的时间」开始第一段。
+      </p>
+    </section>
+
+    <!-- ========== 底线 ========== -->
+    <section class="view" id="view-rules" data-view="rules" aria-label="底线">
+      <div class="section-head">
+        <h2>底线清单</h2>
+        <button class="text-btn" id="addRuleBtn" type="button">＋ 添加</button>
+      </div>
+      <p class="hint">底线不是 KPI，是给自己划的一条线。达标不奖励，越线当天就看得见。</p>
+      <ul class="rules" id="rules"></ul>
+
+      <form class="card form" id="ruleForm" hidden>
+        <div class="card-head"><h3>新条款</h3><button class="icon-btn" type="button" id="ruleFormClose" aria-label="收起">✕</button></div>
+        <label class="field">
+          <span>类型</span>
+          <select id="ruleType">
+            <option value="focus">自己的时间</option>
+            <option value="game">游戏</option>
+            <option value="sleep">睡眠</option>
+          </select>
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>比较</span>
+            <select id="ruleCmp">
+              <option value="lte">不超过（≤）</option>
+              <option value="gte">不少于（≥）</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>时长（分钟）</span>
+            <input id="ruleMinutes" type="number" min="5" max="1440" step="5" value="60" inputmode="numeric">
+          </label>
+        </div>
+        <label class="field">
+          <span>显示名（可选）</span>
+          <input id="ruleLabel" type="text" maxlength="24" placeholder="留空自动生成">
+        </label>
+        <button class="btn-primary" type="submit">加进清单</button>
+      </form>
+    </section>
+
+    <!-- ========== 复盘 ========== -->
+    <section class="view" id="view-review" data-view="review" aria-label="复盘">
+      <div class="section-head">
+        <h2>晚间复盘</h2>
+        <input class="date-input" id="reviewDate" type="date">
+      </div>
+
+      <div class="card summary" id="reviewSummary"></div>
+
+      <form class="card form review-form" id="reviewForm">
+        <label class="field">
+          <span>① 今天做成了什么</span>
+          <textarea id="reviewA" rows="3" maxlength="300" placeholder="哪怕只有一件小事"></textarea>
+        </label>
+        <label class="field">
+          <span>② 被什么打断 / 消耗了</span>
+          <textarea id="reviewB" rows="3" maxlength="300" placeholder="写具体的场景，不写自我批评"></textarea>
+        </label>
+        <label class="field">
+          <span>③ 明天最重要的一件事</span>
+          <textarea id="reviewC" rows="2" maxlength="200" placeholder="只写一件"></textarea>
+        </label>
+        <button class="btn-primary" type="submit" id="reviewSave">保存这一天的复盘</button>
+      </form>
+
+      <div class="section-head"><h2>最近的复盘</h2></div>
+      <ul class="reviews" id="reviewList"></ul>
+      <p class="empty" id="reviewEmpty" hidden>还没有存过复盘。</p>
+    </section>
+
+    <!-- ========== 数据 ========== -->
+    <section class="view" id="view-data" data-view="data" aria-label="数据">
+      <div class="section-head"><h2>数据</h2></div>
+
+      <div class="card">
+        <div class="card-head"><h3>本地存储</h3><span class="pill-soft" id="storageEstimate">—</span></div>
+        <p class="hint">所有记录只存在这台设备的浏览器里（IndexedDB）。换手机、清缓存前先导出。</p>
+        <div class="btn-row">
+          <button class="btn-ghost" id="exportBtn" type="button">导出 JSON</button>
+          <button class="btn-ghost" id="importBtn" type="button">导入 JSON</button>
+          <input id="importFile" type="file" accept="application/json,.json" hidden>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>装到主屏</h3></div>
+        <p class="hint" id="installHint">用手机浏览器打开本页 → 菜单 →「添加到主屏幕 / 安装应用」。装完就能全屏打开、断网可用。</p>
+        <button class="btn-ghost" id="installBtn" type="button" hidden>立即安装</button>
+      </div>
+
+      <div class="card danger-card">
+        <div class="card-head"><h3>清空</h3></div>
+        <p class="hint">删掉全部事件与复盘，设置项保留。此操作不可撤销，导出了再动手。</p>
+        <button class="btn-danger" id="clearBtn" type="button">清空全部记录</button>
+      </div>
+
+      <p class="version">时光账本 v1.0 · 阶段一（PWA）</p>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="主导航">
+    <button class="tab is-active" data-tab="record" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5.2l3.4 2"></path></svg>
+      <span>记录</span>
+    </button>
+    <button class="tab" data-tab="rules" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 19 6v5.6c0 4.2-2.9 7.4-7 9.2-4.1-1.8-7-5-7-9.2V6l7-2.8Z"></path><path d="m9.2 11.8 2 2 3.6-3.8"></path></svg>
+      <span>底线</span>
+    </button>
+    <button class="tab" data-tab="review" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 5.5A1.8 1.8 0 0 1 6.3 3.7H19v16.6H6.3a1.8 1.8 0 0 1-1.8-1.8V5.5Z"></path><path d="M8.5 8h6.5M8.5 12h6.5M8.5 16h3.5"></path></svg>
+      <span>复盘</span>
+    </button>
+    <button class="tab" data-tab="data" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6.2" rx="7" ry="2.7"></ellipse><path d="M5 6.2v11.6c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7V6.2"></path><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"></path></svg>
+      <span>数据</span>
+    </button>
+  </nav>
+</div>
+
+<!-- 结束面板 -->
+<div class="sheet-mask" id="stopSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="stopTitle">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h3 id="stopTitle">结束这一段</h3>
+      <span class="sheet-dur" id="stopDur">—</span>
+    </div>
+    <p class="sheet-label">结束原因</p>
+    <div class="chips" id="reasonChips" role="group" aria-label="结束原因">
+      <button class="chip is-on" data-reason="natural" type="button">自然结束</button>
+      <button class="chip" data-reason="interrupted" type="button">被打断</button>
+      <button class="chip" data-reason="switched" type="button">切走了</button>
+      <button class="chip" data-reason="manual" type="button">手动收尾</button>
+    </div>
+    <p class="sheet-label">备注（可选）</p>
+    <textarea id="stopNote" rows="2" maxlength="200" placeholder="刚才在想什么…"></textarea>
+    <div class="sheet-actions">
+      <button class="btn-ghost" id="stopCancel" type="button">取消</button>
+      <button class="btn-primary" id="stopConfirm" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑某条记录 -->
+<div class="sheet-mask" id="editSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h3 id="editTitle">编辑记录</h3>
+      <span class="sheet-dur" id="editDur">—</span>
+    </div>
+    <p class="sheet-label">结束原因</p>
+    <div class="chips" id="editChips" role="group" aria-label="结束原因">
+      <button class="chip" data-reason="natural" type="button">自然结束</button>
+      <button class="chip" data-reason="interrupted" type="button">被打断</button>
+      <button class="chip" data-reason="switched" type="button">切走了</button>
+      <button class="chip" data-reason="manual" type="button">手动收尾</button>
+    </div>
+    <p class="sheet-label">备注</p>
+    <textarea id="editNote" rows="2" maxlength="200" placeholder="补一句"></textarea>
+    <div class="sheet-actions">
+      <button class="btn-danger-ghost" id="editDelete" type="button">删除</button>
+      <button class="btn-primary" id="editSave" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
