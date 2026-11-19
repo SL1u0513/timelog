@@ -39,6 +39,7 @@
     sleepTarget: 480,    // 睡眠目标（分钟）
     focusTarget: 120,    // 自己的时间软目标（分钟）
     gameGate: true,      // 开始游戏前先问一句
+    theme: 'dark',       // dark | light | auto
     rules: [
       { id: 'r-game', type: 'game', cmp: 'lte', minutes: 60, label: '游戏 ≤ 1 小时', enabled: true },
       { id: 'r-sleep', type: 'sleep', cmp: 'gte', minutes: 420, label: '睡眠 ≥ 7 小时', enabled: true },
@@ -221,8 +222,27 @@
 
   /* ================= 启动 ================= */
 
+  function resolvedTheme(mode) {
+    if (mode === 'auto') {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    return mode === 'light' ? 'light' : 'dark';
+  }
+
+  function applyTheme() {
+    var mode = settings.theme || 'dark';
+    var t = resolvedTheme(mode);
+    document.documentElement.setAttribute('data-theme', t);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t === 'light' ? '#f5efe2' : '#14110d');
+    $$('#themeSeg button').forEach(function (b) {
+      b.classList.toggle('is-on', b.dataset.themeMode === mode);
+    });
+  }
+
   function init() {
     loadSettingsDeferred();
+    applyTheme();
     renderTopDate();
     bindEvents();
     restoreTab();
@@ -1086,6 +1106,8 @@
 
   function loadReview(dateKey) {
     var dk = dateKey || todayKey();
+    var dateEl = $('#reviewDate');
+    if (dateEl && dateEl.value !== dk) dateEl.value = dk;
     var ts = keyToTs(dk);
     var st = dayStats(ts);
 
@@ -1477,6 +1499,21 @@
       toast('装好了，回桌面看看');
     });
     $('#copyUrlBtn').addEventListener('click', copyUrl);
+    $('#themeSeg').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-theme-mode]');
+      if (!b) return;
+      settings.theme = b.dataset.themeMode;
+      saveSettings();
+      applyTheme();
+      toast(b.textContent + '：已切换');
+    });
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: light)');
+      var onScheme = function () { if ((settings.theme || 'dark') === 'auto') applyTheme(); };
+      if (mq.addEventListener) mq.addEventListener('change', onScheme);
+      else if (mq.addListener) mq.addListener(onScheme);
+    }
+
     $('#gateOk').addEventListener('click', function () {
       closeSheet($('#gateSheet'));
       if (gateFromSwitch) switchTo('game');

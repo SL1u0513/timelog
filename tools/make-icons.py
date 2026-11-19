@@ -15,10 +15,10 @@ S = 4  # 超采样倍数
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'icons')
 
-BG_TOP = (27, 35, 51)
-BG_BOTTOM = (13, 17, 24)
-AMBER = (245, 182, 66)
-RING_TRACK = (42, 49, 66)
+BG_TOP = (32, 26, 20)
+BG_BOTTOM = (14, 11, 9)
+AMBER = (232, 176, 75)
+RING_TRACK = (52, 44, 34)
 
 
 def vertical_gradient(size, top, bottom):
@@ -43,7 +43,7 @@ def draw_clock(img, cx, cy, r, scale=S):
           fill=AMBER, width=int(stroke))
     # 内盘
     inner = r - stroke
-    d.ellipse([cx - inner, cy - inner, cx + inner, cy + inner], fill=(15, 19, 27))
+    d.ellipse([cx - inner, cy - inner, cx + inner, cy + inner], fill=(20, 16, 12))
 
     # 分针（指向 4 点）
     hx, hy = cx + 0.40 * inner, cy + 0.26 * inner
@@ -70,7 +70,7 @@ def make_icon(px, rounded=True, full_bleed=False):
     # 顶部柔光（大幅模糊，避免出现硬边）
     glow = Image.new('RGBA', (w, w), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    gd.ellipse([-0.35 * w, -0.70 * w, 1.35 * w, 0.40 * w], fill=(126, 156, 208, 34))
+    gd.ellipse([-0.35 * w, -0.70 * w, 1.35 * w, 0.40 * w], fill=(210, 170, 110, 40))
     glow = glow.filter(ImageFilter.GaussianBlur(w * 0.13))
     img = Image.alpha_composite(img, glow)
 
