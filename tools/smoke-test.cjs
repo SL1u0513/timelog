@@ -29,7 +29,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
     indexedDB.deleteDatabase('timelog')
   })
   await page.reload({ waitUntil: 'networkidle' })
-  await page.waitForSelector('#hero .start-tile')
+  await page.waitForSelector('#hero .start-row')
 
   log('1. 空态渲染 OK')
   await shot(page, '01-idle')
@@ -45,14 +45,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
 
   // ---- 结束并选原因
   await page.click('#stopBtn')
-  await page.waitForSelector('#stopSheet.is-open')
-  await page.waitForTimeout(320)
-  await shot(page, '03-stop-sheet')
-  await page.click('#reasonChips [data-reason="interrupted"]')
-  await page.fill('#stopNote', '被消息打断了一次')
-  await page.click('#stopConfirm')
-  await page.waitForSelector('#stopSheet', { state: 'hidden' })
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(600)
 
   const entries = await page.$$eval('.entry', (els) => els.length)
   log('3. 时间线条目数 =', entries)
@@ -69,8 +62,8 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
       g.onsuccess = () => res(g.result)
     }
   }))
-  log('4. IndexedDB 事件数 =', stored.length, '状态 =', stored[0].state, '原因 =', stored[0].endReason)
-  if (stored.length !== 1 || stored[0].state !== 'closed' || stored[0].endReason !== 'interrupted') {
+  log('4. IndexedDB 事件数 =', stored.length, '状态 =', stored[0].state)
+  if (stored.length !== 1 || stored[0].state !== 'closed') {
     throw new Error('落库内容不对：' + JSON.stringify(stored[0]))
   }
 
@@ -80,7 +73,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
   await page.click('#gateOk')
   await page.waitForSelector('#boxBar')
   await page.waitForTimeout(1200)
-  const boxText = await page.textContent('.box-row')
+  const boxText = await page.textContent('#boxLeft')
   log('5. 游戏时间盒 =', boxText.replace(/\s+/g, ' ').trim())
   await shot(page, '04-running-game')
 
@@ -109,9 +102,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
 
   // 收尾，进入底线 / 复盘 / 数据
   await page.click('#stopBtn')
-  await page.waitForSelector('#stopSheet.is-open')
-  await page.click('#stopConfirm')
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(700)
 
   await page.click('[data-tab="rules"]')
   await page.waitForTimeout(300)
@@ -166,7 +157,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
   const offline = await page.evaluate(() => ({
     title: document.title,
     hero: document.querySelector('#hero').textContent.replace(/\s+/g, ' ').trim(),
-    stats: document.querySelectorAll('.stat').length,
+    stats: document.querySelectorAll('.ledger-row').length,
   }))
   log('12. 离线重载 OK：', JSON.stringify(offline))
   if (offline.stats !== 3) throw new Error('离线时界面没有渲染出来')
@@ -193,7 +184,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
   await warnPage.click('#gateOk')
   await warnPage.waitForTimeout(4200)
   const warnNear = await warnPage.evaluate(() => {
-    const w = document.querySelector('#warnBox')
+    const w = document.querySelector('#boxLeft')
     return w ? { text: w.textContent.trim(), over: w.classList.contains('is-over') } : null
   })
   log('13. 预警（3 秒后） =', JSON.stringify(warnNear))
@@ -201,9 +192,8 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name + '.png
   await shot(warnPage, '12-game-warn')
   await warnPage.waitForTimeout(3000)
   const warnOver = await warnPage.evaluate(() => {
-    const w = document.querySelector('#warnBox')
     const l = document.querySelector('#boxLeft')
-    return { over: w && w.classList.contains('is-over'), left: l && l.textContent }
+    return { over: l && l.classList.contains('is-over'), left: l && l.textContent.trim() }
   })
   log('14. 超时后 =', JSON.stringify(warnOver))
   if (!warnOver.over) throw new Error('超时状态没有出现')

@@ -6,7 +6,7 @@
  *
  * 改代码后把 CACHE 版本号 +1。
  */
-var CACHE = 'timelog-v7';
+var CACHE = 'timelog-v8';
 
 var ASSETS = [
   './',
